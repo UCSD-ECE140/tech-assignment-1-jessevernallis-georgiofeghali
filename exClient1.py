@@ -1,5 +1,6 @@
 import os
 import json
+import random
 from dotenv import load_dotenv
 
 import paho.mqtt.client as paho
@@ -58,58 +59,45 @@ def on_message(client, userdata, msg):
 
 
 if __name__ == '__main__':
-    # load_dotenv(dotenv_path='./credentials.env')
-    
-    # broker_address = os.environ.get('BROKER_ADDRESS')
-    # broker_port = int(os.environ.get('BROKER_PORT'))
-    # username = os.environ.get('USER_NAME')
-    # password = os.environ.get('PASSWORD')
+
     broker_address = "9f3415ad498b4edf9277085bae075b5d.s1.eu.hivemq.cloud"
     broker_port = 8883
     username = "Player_1"
     password = "Player_1"
 
-    client = paho.Client(callback_api_version=paho.CallbackAPIVersion.VERSION1, client_id="Player1", userdata=None, protocol=paho.MQTTv5)
+    client1 = paho.Client(callback_api_version=paho.CallbackAPIVersion.VERSION1, client_id="client1", userdata=None, protocol=paho.MQTTv5)
     
     # enable TLS for secure connection
-    client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
+    client1.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
     # set username and password
-    client.username_pw_set(username, password)
+    client1.username_pw_set(username, password)
     # connect to HiveMQ Cloud on port 8883 (default for MQTT)
-    client.connect(broker_address, broker_port)
+    client1.connect(broker_address, broker_port)
 
     # setting callbacks, use separate functions like above for better visibility
-    client.on_subscribe = on_subscribe # Can comment out to not print when subscribing to new topics
-    client.on_message = on_message
-    client.on_publish = on_publish # Can comment out to not print when publishing to topics
+    client1.on_subscribe = on_subscribe # Can comment out to not print when subscribing to new topics
+    client1.on_message = on_message
+    client1.on_publish = on_publish # Can comment out to not print when publishing to topics
 
-    lobby_name = "TestLobby"
-    player_1 = "Player1"
-    player_2 = "Player2"
-    player_3 = "Player3"
-
-    client.subscribe(f"games/{lobby_name}/lobby")
-    client.subscribe(f'games/{lobby_name}/+/game_state')
-    client.subscribe(f'games/{lobby_name}/scores')
-
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                            'team_name':'ATeam',
-                                            'player_name' : player_1}))
+    client2 = paho.Client(callback_api_version=paho.CallbackAPIVersion.VERSION1, client_id="client2", userdata=None, protocol=paho.MQTTv5)
     
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                            'team_name':'BTeam',
-                                            'player_name' : player_2}))
+    # enable TLS for secure connection
+    client2.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
+    # set username and password
+    client2.username_pw_set(username, password)
+    # connect to HiveMQ Cloud on port 8883 (default for MQTT)
+    client2.connect(broker_address, broker_port)
+
+    # setting callbacks, use separate functions like above for better visibility
+    client2.on_subscribe = on_subscribe # Can comment out to not print when subscribing to new topics
+    client2.on_message = on_message
+    client2.on_publish = on_publish # Can comment out to not print when publishing to topics
+
+
+    while(True):
+        time.sleep(3) 
+        client1.publish("topic1", payload= random.randint(1, 10), qos=1)
+        client2.publish("topic2", payload= random.randint(1, 10), qos=1)
+
     
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                        'team_name':'BTeam',
-                                        'player_name' : player_3}))
-
-    time.sleep(1) # Wait a second to resolve game start
-    client.publish(f"games/{lobby_name}/start", "START")
-    client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
-    client.publish(f"games/{lobby_name}/{player_2}/move", "DOWN")
-    client.publish(f"games/{lobby_name}/{player_3}/move", "DOWN")
-    client.publish(f"games/{lobby_name}/start", "STOP")
-
-
-    client.loop_forever()
+    
