@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 import paho.mqtt.client as paho
 from paho import mqtt
+import numpy as np
 import time
 
 
@@ -53,7 +54,9 @@ def on_message(client, userdata, msg):
         :param userdata: userdata is set when initiating the client, here it is userdata=None
         :param msg: the message with topic and payload
     """
-
+    global data
+    if msg.topic == "games/TestLobby/Player1/game_state":
+        data = json.loads(msg.payload)
     print("message: " + msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
 
 
@@ -81,8 +84,6 @@ if __name__ == '__main__':
 
     lobby_name = "TestLobby"
     player_1 = "Player1"
-    player_2 = "Player2"
-    player_3 = "Player3"
 
     client.subscribe(f"games/{lobby_name}/lobby")
     client.subscribe(f'games/{lobby_name}/+/game_state')
@@ -92,20 +93,21 @@ if __name__ == '__main__':
                                             'team_name':'ATeam',
                                             'player_name' : player_1}))
     
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                            'team_name':'BTeam',
-                                            'player_name' : player_2}))
-    
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                        'team_name':'BTeam',
-                                        'player_name' : player_3}))
 
     time.sleep(1) # Wait a second to resolve game start
     client.publish(f"games/{lobby_name}/start", "START")
-    client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
-    client.publish(f"games/{lobby_name}/{player_2}/move", "DOWN")
-    client.publish(f"games/{lobby_name}/{player_3}/move", "DOWN")
-    client.publish(f"games/{lobby_name}/start", "STOP")
-
-
-    client.loop_forever()
+    
+    data = {}
+    i = 0
+    client.loop_start()
+    while i != 5:
+        time.sleep(1)
+        walls = data['walls']
+        player = data['currentPosition']
+        wall_direction = []
+        for wall in walls:
+            wall_direction.append(np.subtract(player,wall))
+        print(wall_direction)
+        client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
+        i += 1
+    client.loop_stop()
