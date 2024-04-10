@@ -53,9 +53,22 @@ def on_message(client, userdata, msg):
         :param userdata: userdata is set when initiating the client, here it is userdata=None
         :param msg: the message with topic and payload
     """
-
+    global data
+    if msg.topic == "games/TestLobby/lobby":
+        data = 'data: '+ str(msg.payload)
     print("message: " + msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
 
+def get_move(player):
+    options = ['UP', 'DOWN', 'LEFT', 'RIGHT']
+    while True:
+        print(f"{player} move")
+        for option in options:
+            print(f"{option}")
+        move = input("Select Move ")
+        if move in options:
+            return move
+        else:
+            print("Invalid Move")
 
 if __name__ == '__main__':
     load_dotenv(dotenv_path='./credentials.env')
@@ -81,8 +94,6 @@ if __name__ == '__main__':
 
     lobby_name = "TestLobby"
     player_1 = "Player1"
-    player_2 = "Player2"
-    player_3 = "Player3"
 
     client.subscribe(f"games/{lobby_name}/lobby")
     client.subscribe(f'games/{lobby_name}/+/game_state')
@@ -92,20 +103,19 @@ if __name__ == '__main__':
                                             'team_name':'ATeam',
                                             'player_name' : player_1}))
     
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                            'team_name':'BTeam',
-                                            'player_name' : player_2}))
-    
-    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                        'team_name':'BTeam',
-                                        'player_name' : player_3}))
 
     time.sleep(1) # Wait a second to resolve game start
+    data = ''
+    
     client.publish(f"games/{lobby_name}/start", "START")
-    client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
-    client.publish(f"games/{lobby_name}/{player_2}/move", "DOWN")
-    client.publish(f"games/{lobby_name}/{player_3}/move", "DOWN")
-    client.publish(f"games/{lobby_name}/start", "STOP")
+    data = ''
+
+    client.loop_start()
+    time.sleep(1)
+    while 'Game Over: All coins have been collected' not in data:
+        player1_move = get_move('player1')
+        client.publish(f"games/{lobby_name}/{player_1}/move", player1_move)
+    client.loop_stop()   
 
 
-    client.loop_forever()
+    
