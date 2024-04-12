@@ -82,32 +82,47 @@ if __name__ == '__main__':
     client.on_message = on_message
     client.on_publish = on_publish # Can comment out to not print when publishing to topics
 
-    lobby_name = "TestLobby"
-    player_1 = "Player1"
+    lobby_name = "Lobby1"
+    team1_player1 = "Player1"
+    team1_player2 = "Player2"
+    team2_player1  = "Player3"
+    team2_player2 = "Player4"
 
     client.subscribe(f"games/{lobby_name}/lobby")
     client.subscribe(f'games/{lobby_name}/+/game_state')
     client.subscribe(f'games/{lobby_name}/scores')
 
     client.publish("new_game", json.dumps({'lobby_name':lobby_name,
-                                            'team_name':'ATeam',
-                                            'player_name' : player_1}))
+                                            'team_name':'Team1',
+                                            'player_name' : team1_player1}))
+    
+    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
+                                            'team_name':'Team1',
+                                            'player_name' : team1_player2}))
+    
+    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
+                                            'team_name':'Team2',
+                                            'player_name' : team2_player1}))
+    
+    client.publish("new_game", json.dumps({'lobby_name':lobby_name,
+                                            'team_name':'Team2',
+                                            'player_name' : team2_player2}))
     
 
     time.sleep(1) # Wait a second to resolve game start
     client.publish(f"games/{lobby_name}/start", "START")
     
-    data = {}
-    i = 0
-    client.loop_start()
-    while i != 5:
-        time.sleep(1)
-        walls = data['walls']
-        player = data['currentPosition']
-        wall_direction = []
-        for wall in walls:
-            wall_direction.append(np.subtract(player,wall))
-        print(wall_direction)
-        client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
-        i += 1
-    client.loop_stop()
+    # data = {}
+    # i = 0
+    # client.loop_start()
+    # while i != 5:
+    #     time.sleep(1)
+    #     walls = data['walls']
+    #     player = data['currentPosition']
+    #     wall_direction = []
+    #     for wall in walls:
+    #         wall_direction.append(np.subtract(player,wall))
+    #     print(wall_direction)
+    #     client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
+    #     i += 1
+    # client.loop_stop()
