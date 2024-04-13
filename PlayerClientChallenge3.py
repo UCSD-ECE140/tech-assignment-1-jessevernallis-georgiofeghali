@@ -173,5 +173,6 @@ if __name__ == '__main__':
         print(f"data = {player_data}")
         for i,data in enumerate(player_data):
             client.publish(f"games/{lobby_name}/{players[i]}/move", player_move(data))
+            #reset player data each turn
         player_data = []
     client.loop_stop()
