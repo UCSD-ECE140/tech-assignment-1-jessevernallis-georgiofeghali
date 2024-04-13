@@ -6,6 +6,8 @@ import paho.mqtt.client as paho
 from paho import mqtt
 import numpy as np
 import time
+import random
+from moveset import Moveset
 
 
 # setting callbacks for different events to see if it works, print the message etc.
@@ -54,12 +56,65 @@ def on_message(client, userdata, msg):
         :param userdata: userdata is set when initiating the client, here it is userdata=None
         :param msg: the message with topic and payload
     """
-    global data
-    if msg.topic == "games/TestLobby/Player1/game_state":
-        data = json.loads(msg.payload)
+    global end
+    if msg.topic == "games/Lobby1/lobby":
+        end = str(msg.payload)
+
+    global player_data
+    for player in players:
+        if msg.topic == f"games/Lobby1/{player}/game_state":
+            print(f"player : {player}")
+            player_data.append(json.loads(msg.payload))
+
     print("message: " + msg.topic + " " + str(msg.qos) + " " + str(msg.payload))
+#find any of item that is next to a player
+def find_nearby(items, player):
+    item_direction = []
 
+    for item in items:
+        #direction of each item relative to the player
+        item_relative = np.subtract(item,player)
+        if(abs(np.sum(item_relative)) == 1 and not np.all(item_relative)):
+            item_direction.append(item_relative)
+    for i,direction in enumerate(item_direction):
+        for move in Moveset:
+            if move.value == tuple(direction):
+                item_direction[i] = move.name
+    return item_direction
 
+#determines the player's next move based on gamstate data
+def player_move(data):
+    walls = data['walls']                                                #walls' current position
+    player = data['currentPosition']                                     #player's current position
+    coins = data['coin1'] + data['coin2'] + data['coin3']                #coin's current positions
+    wall_direction = []                                                  #list of  direction of each wall, intailized as nothing
+    coin_direction = []                                                  #list of  directions with a coin, intailized as nothing
+    player_direction = []                                                #list of  directions the player can possibly move, intailized as nothing
+
+    #for each coin in the status message give its direction to coin_direction
+    coin_direction = find_nearby(coins, player)
+    #if there is a coin next to the player, grab it
+    if(not (len(coin_direction) == 0)):
+        player_move = random.choice(coin_direction)
+    else:
+        #for each wall in the status message give its direction to coin_direction
+        wall_direction = find_nearby(walls, player)
+        #adds all moves without a wall to player direction
+        for move in (member.name for member in Moveset):
+            if(move not in wall_direction):
+                player_direction.append(move)
+        #if on an edge, remove the edge direction from player direction
+        if(player[0] == 0):
+            player_direction.remove("UP")
+        if(player[0] == 9):
+                player_direction.remove("DOWN")
+        if(player[1] == 0):
+                player_direction.remove("LEFT")
+        if(player[1] == 9):
+            player_direction.remove("RIGHT")
+        player_move = random.choice(player_direction)
+
+    return player_move
 if __name__ == '__main__':
     load_dotenv(dotenv_path='./credentials.env')
     
@@ -83,10 +138,8 @@ if __name__ == '__main__':
     client.on_publish = on_publish # Can comment out to not print when publishing to topics
 
     lobby_name = "Lobby1"
-    team1_player1 = "Player1"
-    team1_player2 = "Player2"
-    team2_player1  = "Player3"
-    team2_player2 = "Player4"
+    players = ["Player1","Player2","Player3","Player4"]
+
 
     client.subscribe(f"games/{lobby_name}/lobby")
     client.subscribe(f'games/{lobby_name}/+/game_state')
@@ -94,35 +147,31 @@ if __name__ == '__main__':
 
     client.publish("new_game", json.dumps({'lobby_name':lobby_name,
                                             'team_name':'Team1',
-                                            'player_name' : team1_player1}))
+                                            'player_name' : players[0]}))
     
     client.publish("new_game", json.dumps({'lobby_name':lobby_name,
                                             'team_name':'Team1',
-                                            'player_name' : team1_player2}))
+                                            'player_name' : players[1]}))
     
     client.publish("new_game", json.dumps({'lobby_name':lobby_name,
                                             'team_name':'Team2',
-                                            'player_name' : team2_player1}))
+                                            'player_name' : players[2]}))
     
     client.publish("new_game", json.dumps({'lobby_name':lobby_name,
                                             'team_name':'Team2',
-                                            'player_name' : team2_player2}))
+                                            'player_name' : players[3]}))
     
 
     time.sleep(1) # Wait a second to resolve game start
     client.publish(f"games/{lobby_name}/start", "START")
-    
-    # data = {}
-    # i = 0
-    # client.loop_start()
-    # while i != 5:
-    #     time.sleep(1)
-    #     walls = data['walls']
-    #     player = data['currentPosition']
-    #     wall_direction = []
-    #     for wall in walls:
-    #         wall_direction.append(np.subtract(player,wall))
-    #     print(wall_direction)
-    #     client.publish(f"games/{lobby_name}/{player_1}/move", "UP")
-    #     i += 1
-    # client.loop_stop()
+    end = ""
+    player_data = []
+
+    client.loop_start()
+    while 'Game Over: All coins have been collected' not in end:
+        time.sleep(1)
+        print(f"data = {player_data}")
+        for i,data in enumerate(player_data):
+            client.publish(f"games/{lobby_name}/{players[i]}/move", player_move(data))
+        player_data = []
+    client.loop_stop()
