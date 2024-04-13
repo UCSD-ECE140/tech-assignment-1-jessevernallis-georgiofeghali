@@ -170,7 +170,6 @@ if __name__ == '__main__':
     client.loop_start()
     while 'Game Over: All coins have been collected' not in end:
         time.sleep(1)
-        print(f"data = {player_data}")
         for i,data in enumerate(player_data):
             client.publish(f"games/{lobby_name}/{players[i]}/move", player_move(data))
             #reset player data each turn
